@@ -1,93 +1,79 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <stdbool.h>
 
 #define N 4
-
 
 int min(int a, int b) {
     return (a < b) ? a : b;
 }
 
-
-int findMinCostNode(int cost[], int n) {
-    int min = INT_MAX, min_index;
-    for (int i = 0; i < n; i++)
-        if (cost[i] < min)
-            min = cost[i], min_index = i;
-    return min_index;
-}
-
-
-void printSolution(int x[], int n) {
-    printf("The optimal assignment is:\n");
-    for (int i = 0; i < n; i++)
-        printf("Worker %d is assigned to job %d\n", i + 1, x[i] + 1);
-}
-
-
-int calculateLowerBound(int costMatrix[N][N], int x[], int n, int row) {
+int calculateLowerBound(int costMatrix[N][N], bool assigned[], int row) {
     int bound = 0;
-    bool assigned[N] = { false };
-    for (int i = 0; i < row; i++)
-        assigned[x[i]] = true;
-    for (int i = row; i < n; i++) {
+    for (int i = row; i < N; i++) {
         int minCost = INT_MAX;
-        for (int j = 0; j < n; j++)
-            if (!assigned[j])
+        for (int j = 0; j < N; j++) {
+            if (!assigned[j]) {
                 minCost = min(minCost, costMatrix[i][j]);
+            }
+        }
         bound += minCost;
     }
     return bound;
 }
 
-
-void branchAndBound(int costMatrix[N][N], int n) {
-    int cost[N] = { 0 };
-    int x[N] = { 0 };
-    int minCost = INT_MAX;
-
-    for (int i = 0; i < n; i++)
-        x[i] = -1;
-
-    for (int i = 0; i < n; i++)
-        cost[i] = costMatrix[0][i] + calculateLowerBound(costMatrix, x, n, 1);
-
-    for (int i = 1; i < n; i++) {
-        int minIndex = findMinCostNode(cost, n);
-        x[0] = minIndex;
-
-        for (int j = 1; j < n; j++) {
-            x[j] = -1;
-            for (int k = 0; k < n; k++) {
-                if (k != minIndex)
-                    cost[j] = costMatrix[j][k] + calculateLowerBound(costMatrix, x, n, j + 1);
+void branchAndBoundUtil(int costMatrix[N][N], int row, bool assigned[], int currentAssignment[], int currentCost, int *minCost, int bestAssignment[]) {
+    if (row == N) {
+        if (currentCost < *minCost) {
+            *minCost = currentCost;
+            for (int i = 0; i < N; i++) {
+                bestAssignment[i] = currentAssignment[i];
             }
         }
-
-        int currentCost = 0;
-        for (int l = 0; l < n; l++)
-            currentCost += costMatrix[l][x[l]];
-
-        if (currentCost < minCost)
-            minCost = currentCost;
-
-        cost[minIndex] = INT_MAX;
+        return;
     }
 
-    printSolution(x, n);
+    for (int j = 0; j < N; j++) {
+        if (!assigned[j]) {
+            assigned[j] = true;
+            currentAssignment[row] = j;
+            int newCost = currentCost + costMatrix[row][j];
+            int bound = newCost + calculateLowerBound(costMatrix, assigned, row + 1);
+
+            if (bound < *minCost) {
+                branchAndBoundUtil(costMatrix, row + 1, assigned, currentAssignment, newCost, minCost, bestAssignment);
+            }
+
+            assigned[j] = false;
+        }
+    }
+}
+
+void branchAndBound(int costMatrix[N][N]) {
+    int minCost = INT_MAX;
+    int bestAssignment[N];
+    bool assigned[N] = {false};
+    int currentAssignment[N];
+
+    branchAndBoundUtil(costMatrix, 0, assigned, currentAssignment, 0, &minCost, bestAssignment);
+
+    printf("The optimal assignment is:\n");
+    for (int i = 0; i < N; i++) {
+        printf("Worker %d is assigned to job %d\n", i + 1, bestAssignment[i] + 1);
+    }
 }
 
 int main() {
-	printf("swaroop-192211969\n");
+    printf("swaroop-192211969\n");
     int costMatrix[N][N] = {
-        { 9, 2, 7, 8 },
-        { 6, 4, 3, 7 },
-        { 5, 8, 1, 8 },
-        { 7, 6, 9, 4 }
+        {9, 2, 7, 8},
+        {6, 4, 3, 7},
+        {5, 8, 1, 8},
+        {7, 6, 9, 4}
     };
 
-    branchAndBound(costMatrix, N);
+    branchAndBound(costMatrix);
 
     return 0;
 }
